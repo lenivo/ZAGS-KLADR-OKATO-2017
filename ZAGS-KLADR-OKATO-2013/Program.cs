@@ -14,6 +14,11 @@ namespace ZAGS_KLADR_OKATO
 {
     class Program
     {
+        // базовый каталог
+        public static string strBaseDir = Environment.CurrentDirectory;
+        // временный каталог
+        public static string strTempDir = "Temp";
+        // приставки населенных пунктов
         public static string[,] strAffix = new string[,] {  { " \\(РАЙОН\\)", " район" }, 
                                                             { " \\(Р\\-Н\\)", " район" }, 
                                                             { " \\(С\\.?\\)", "село" }, 
@@ -29,7 +34,16 @@ namespace ZAGS_KLADR_OKATO
                                                             { " \\(ПОС\\. Ж\\.Д\\.СТ\\.\\)", "посёлок железнодорожн" }, 
                                                             { " \\(ПОС\\.?\\)", "посёлок" },
                                                             { " \\(П\\.?\\)", "посёлок" } };
-        public static string[] strExclusion = new string[] { "посёлок Кармалка", "деревня Алань", "деревня Дмитриевка", "деревня Ильинка", "посёлок Ерыклинский", "" }; // поселки городского подчинения
+        // поселки городского подчинения
+        public static string[] strExclusion = new string[] {
+            "посёлок Кармалка",
+            "деревня Алань",
+            "деревня Дмитриевка",
+            "деревня Ильинка",
+            "посёлок Ерыклинский",
+            "" };
+        // сегодня
+        public static string strToday = "_" + DateTime.Today.ToShortDateString();
 
         static void Main(string[] args)
         {
@@ -47,37 +61,34 @@ namespace ZAGS_KLADR_OKATO
                         rl = args[0];
                         break;
                     default:
-                        Console.Write("1 - разводы, 2 - браки, 3 - рожденные, 4 - смерти, s - new, 0 - все: ");
+                        Console.Write("0 - все, 1 - разводы, 2 - браки, 3 - рожденные, 4 - смерти, s - new: ");
                         rl = Console.ReadLine();
                         break;
                 }
             }
             else
             {
-                Console.Write("1 - разводы, 2 - браки, 3 - рожденные, 4 - смерти, s - new, 0 - все: ");
+                Console.Write("0 - все, 1 - разводы, 2 - браки, 3 - рожденные, 4 - смерти, s - new: ");
                 rl = Console.ReadLine();
             }
-            if (rl == "0" | rl == "1")
+            Console.WriteLine(DateTime.Now);
+            if (rl == "0" || rl == "1")
             {
-                Console.WriteLine(DateTime.Now);
                 MrrgDvrc("Divorce");
                 Console.WriteLine(DateTime.Now + " Divorces done!");
-            }//Console.ReadLine();
-            if (rl == "0" | rl == "2")
+            }
+            if (rl == "0" || rl == "2")
             {
-                Console.WriteLine(DateTime.Now);
                 MrrgDvrc("Marriage");
                 Console.WriteLine(DateTime.Now + " Marriages done!");
             }
-            if (rl == "0" | rl == "3")
+            if (rl == "0" || rl == "3")
             {
-                Console.WriteLine(DateTime.Now);
                 MrrgDvrc("Birth");
                 Console.WriteLine(DateTime.Now + " Borns done!");
             }
-            if (rl == "0" | rl == "4")
+            if (rl == "0" || rl == "4")
             {
-                Console.WriteLine(DateTime.Now);
                 MrrgDvrc("Death");
                 Console.WriteLine(DateTime.Now + " Deaths done!");
             }
@@ -91,22 +102,21 @@ namespace ZAGS_KLADR_OKATO
             Regex rgxZAGS = new Regex(@"\""\d{13}\""", RegexOptions.IgnoreCase);
             try
             {
-                OleDbConnection conn2 = new OleDbConnection(@"Provider=Microsoft.Jet.OLEDB.4.0;Data Source=" + Environment.CurrentDirectory + ";Extended Properties=DBASE IV;Persist Security Info=False;");
-                conn2.Open();
-                //ListZipContent(Environment.CurrentDirectory + "\\xml version.zip");
-                if (!Directory.Exists(Environment.CurrentDirectory + "\\Temp\\"))
-                    Directory.CreateDirectory(Environment.CurrentDirectory + "\\Temp\\");
-                if (!Directory.Exists(Environment.CurrentDirectory + "\\" + strAct + DateTime.Today.ToShortDateString() + "\\"))
-                    Directory.CreateDirectory(Environment.CurrentDirectory + "\\" + strAct + "_" + DateTime.Today.ToShortDateString() + "\\");
+                OleDbConnection connDBF = new OleDbConnection(@"Provider=Microsoft.Jet.OLEDB.4.0;Data Source=" + strBaseDir + ";Extended Properties=DBASE IV;Persist Security Info=False;");
+                connDBF.Open();
+                if (!Directory.Exists(Path.Combine(strBaseDir, strTempDir)))
+                    Directory.CreateDirectory(Path.Combine(strBaseDir, strTempDir));
+                if (!Directory.Exists(Path.Combine(strBaseDir, strAct + strToday)))
+                    Directory.CreateDirectory(Path.Combine(strBaseDir, strAct + strToday));
                 // распаковка
 #if !counting
-                string sZip = Environment.CurrentDirectory + "\\fsgs_" + strAct + ".zip";
+                string sZip = Directory.GetFiles(strBaseDir, "fsgs_" + strAct + "*.zip")[0];
                 UncompressZip(sZip);
 #endif
 
                 #region // создаем xml (чтение файлов из временной папки)
 #if !counting
-                string[] FileEntr = Directory.GetFiles(Environment.CurrentDirectory + "\\Temp\\");
+                string[] FileEntr = Directory.GetFiles(Path.Combine(strBaseDir, strTempDir));
                 foreach (string fPath in FileEntr)
                 {// цикл, пока файлы есть
 
@@ -121,15 +131,7 @@ namespace ZAGS_KLADR_OKATO
                             fName += splitArr[i] + "_";
                         fName += ".xml";
                     }
-                    //******************
-                    // попытка перекодировать нечитаемые имена файлов
-                    //string fN = DC("Буинский", "UTF-8", "iso-8859-5"); Console.WriteLine(fN);
-                    //fN = DC("Буинский", "UTF-8", "windows-1251"); Console.WriteLine(fN);
-                    //fN = DC("Буинский", "iso-8859-5", "UTF-8"); Console.WriteLine(fN);
-                    //fN = DC("Буинский", "iso-8859-5", "windows-1251"); Console.WriteLine(fN);
-                    //fN = DC("Буинский", "windows-1251", "UTF-8"); Console.WriteLine(fN);
-                    //fN = DC("Буинский", "windows-1251", "iso-8859-5"); Console.WriteLine(fN);
-                    FileStream fsWrite = new FileStream(Environment.CurrentDirectory + "\\" + strAct + "_" + DateTime.Today.ToShortDateString() + "\\" + fName, FileMode.Create);
+                    FileStream fsWrite = new FileStream(Path.Combine(strBaseDir + "\\" + strAct + strToday, fName), FileMode.Create);
 
                     using (StreamReader srXML = new StreamReader(fsRead))
                     {
@@ -145,7 +147,7 @@ namespace ZAGS_KLADR_OKATO
                                 Match mKLADR = rgxKLADR.Match(line);
                                 while (mKLADR.Success)
                                 {
-                                    strOKATO = OKATO(conn2, mKLADR.Value);
+                                    strOKATO = OKATO(connDBF, mKLADR.Value);
                                     newLine = rgxKLADR.Replace(line, strOKATO);
                                     if (!rgxZAGS.IsMatch(line)) // если ЗАГС, то нужен ОКАТО, а не ТЕРСОН
                                     {
@@ -153,7 +155,7 @@ namespace ZAGS_KLADR_OKATO
                                         if (rgxRegion.IsMatch(line)) // если это субъект РФ, то нужны 2 первых цифры
                                             newLine = newLine.Replace(strOKATO, strOKATO.Substring(0, 2));
                                         else // если это адрес, то по КЛАДР узнаем ИМЯ (ОКАТО уже узнали), потом узнаем ТЕРСОН
-                                            newLine = rgxKLADR.Replace(line, TERSON(conn2, strOKATO, N_A_M_E(conn2, strKLADR)));
+                                            newLine = rgxKLADR.Replace(line, TERSON(connDBF, strOKATO, N_A_M_E(connDBF, strKLADR)));
                                     }
                                     mKLADR = mKLADR.NextMatch();
                                 }
@@ -170,15 +172,15 @@ namespace ZAGS_KLADR_OKATO
                 #region // заполняем txt (чтение файлов из папки с xml)
 
 #if counting
-                ////string[] FileEntr = Directory.GetFiles(Environment.CurrentDirectory + "\\" + strAct + "_" + DateTime.Today.ToShortDateString() + "\\");
-                string[] FileEntr = Directory.GetFiles(Environment.CurrentDirectory + "\\" + "fsgs_" + strAct + "_март\\");
+                ////string[] FileEntr = Directory.GetFiles(strBaseDir + "\\" + strAct + strToday + "\\");
+                string[] FileEntr = Directory.GetFiles(strBaseDir + "\\" + "fsgs_" + strAct + "_март\\");
 #else
-                FileEntr = Directory.GetFiles(Environment.CurrentDirectory + "\\" + strAct + "_" + DateTime.Today.ToShortDateString() + "\\");
+                FileEntr = Directory.GetFiles(Path.Combine(strBaseDir, strAct + strToday));
 #endif
-                string txtFileName = Environment.CurrentDirectory + "\\" + strAct + "_" + DateTime.Today.ToShortDateString() + "\\" + strAct + "_" + DateTime.Today.ToShortDateString() + ".txt";
+                string txtFileName = Path.Combine(strBaseDir + "\\" + strAct + strToday, strAct + strToday + ".txt");
 
                 //***********************************
-                string listPath = Environment.CurrentDirectory + "\\" + strAct + "_" + DateTime.Today.ToShortDateString() + ".xml";
+                string listPath = Path.Combine(strBaseDir, strAct + strToday + ".xml");
                 if (File.Exists(listPath)) File.Delete(listPath);
                 StreamWriter listXML = new StreamWriter(listPath, true, Encoding.GetEncoding("UTF-8"));
                 listXML.WriteLine("<?xml version='1.0'?>");
@@ -215,7 +217,7 @@ namespace ZAGS_KLADR_OKATO
                 resolver.Credentials = System.Net.CredentialCache.DefaultCredentials;
                 XslCompiledTransform xslt = new XslCompiledTransform();
                 xslt.Load(strAct + ".xsl", settings, resolver);
-                xslt.Transform(listPath, strAct + "_" + DateTime.Today.ToShortDateString() + ".txt");
+                xslt.Transform(listPath, strAct + strToday + ".txt");
                 //**************************************
                 #region
                 //if (File.Exists(txtFileName)) File.Delete(txtFileName);
@@ -689,8 +691,8 @@ namespace ZAGS_KLADR_OKATO
                 //swTXT.Close();
                 //Console.ReadLine();
                 #endregion
-                if (Directory.Exists(Environment.CurrentDirectory + "\\Temp\\"))
-                    Directory.Delete(Environment.CurrentDirectory + "\\Temp\\", true);
+                if (Directory.Exists(strBaseDir + "\\Temp\\"))
+                    Directory.Delete(strBaseDir + "\\Temp\\", true);
                 #endregion
             }
             catch (OleDbException exception)
@@ -894,7 +896,7 @@ namespace ZAGS_KLADR_OKATO
             Console.WriteLine("Validation error!");
             Console.WriteLine("\tSeverity:{0}", args.Severity);
             Console.WriteLine("\tMessage:{0}", args.Message);
-            Log(Environment.CurrentDirectory, "1У", "Validation error!\n\tSeverity:" + args.Severity + "\n\tMessage:" + args.Message);
+            Log(strBaseDir, "1У", "Validation error!\n\tSeverity:" + args.Severity + "\n\tMessage:" + args.Message);
         }
 
         private static void ListZipContent(string sFile)
@@ -906,7 +908,7 @@ namespace ZAGS_KLADR_OKATO
 
         private static void UncompressZip(string sFile)
         {
-            string sPath = Environment.CurrentDirectory + "\\Temp\\";
+            string sPath = strBaseDir + strTempDir;
             ZipInputStream zipIn = new ZipInputStream(File.OpenRead(sFile));
             ZipEntry entry;
 
@@ -923,12 +925,11 @@ namespace ZAGS_KLADR_OKATO
                 }
                 streamWriter.Close();
             }
-            //Console.WriteLine("Done!!");
         }
 
         public static void Log(string logPath, string logFile, string logMessage) // запись протокола
         {
-            using (StreamWriter sw = File.AppendText(logPath + "\\" + DateTime.Now.Date.ToString("dd_MM_yyyy") + "_protocol.log"))
+            using (StreamWriter sw = File.AppendText(Path.Combine(logPath, DateTime.Now.Date.ToString("dd_MM_yyyy") + "_protocol.log")))
             {
                 sw.Write("{0} {1}", DateTime.Now.ToLongTimeString(), DateTime.Now.ToLongDateString());
                 sw.WriteLine(" :{0}", logFile + " :: " + logMessage);
